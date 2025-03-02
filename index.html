@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        
+        .game-container {
+            display: flex;
+            gap: 20px;
+        }
+        
+        #game-board {
+            border: 2px solid #333;
+            background-color: #111;
+        }
+        
+        .game-info {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .next-piece {
+            width: 120px;
+            height: 120px;
+            border: 2px solid #333;
+            background-color: #111;
+        }
+        
+        .score-board {
+            padding: 10px;
+            background-color: #333;
+            color: white;
+            border-radius: 5px;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="game-board" width="300" height="600"></canvas>
+        <div class="game-info">
+            <div>
+                <h3>Next Piece</h3>
+                <canvas class="next-piece" id="next-piece" width="120" height="120"></canvas>
+            </div>
+            <div class="score-board">
+                <h3>Score: <span id="score">0</span></h3>
+                <h3>Level: <span id="level">1</span></h3>
+                <h3>Lines: <span id="lines">0</span></h3>
+            </div>
+            <div class="controls">
+                <button id="start-button">Start / Pause</button>
+                <button id="reset-button">Reset</button>
+            </div>
+            <div class="instructions">
+                <h3>Controls</h3>
+                <p>Arrow Left: Move Left</p>
+                <p>Arrow Right: Move Right</p>
+                <p>Arrow Down: Move Down</p>
+                <p>Arrow Up: Rotate</p>
+                <p>Space: Hard Drop</p>
+            </div>
+        </div>
+    </div>
+    <div class="game-over" id="game-over">
+        <h2>Game Over!</h2>
+        <p>Your score: <span id="final-score">0</span></p>
+        <button id="restart-button">Play Again</button>
+    </div>
+    
+    <script src="tetris.js"></script>
+</body>
+</html>
