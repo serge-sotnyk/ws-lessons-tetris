@@ -416,7 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'ArrowDown':
                 movePiece(0, 1);
-                score += 1; // Bonus point for soft drop
+                score += 1;
                 updateScore();
                 break;
             case 'ArrowUp':
@@ -424,6 +424,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case ' ':
                 hardDrop();
+                break;
+            case 'Enter':
+                togglePause();
                 break;
             case 'p':
             case 'P':
@@ -544,61 +547,51 @@ document.addEventListener('DOMContentLoaded', () => {
         // Finger states (extended or not)
         const thumbIsOpen = isThumbOpen(landmarks);
         const indexIsOpen = isFingerOpen(landmarks, 8, 6, 5);
-        const middleIsOpen = isFingerOpen(landmarks, 12, 10, 9);
-        const ringIsOpen = isFingerOpen(landmarks, 16, 14, 13);
-        const pinkyIsOpen = isFingerOpen(landmarks, 20, 18, 17);
         
-        // Count extended fingers
-        const extendedFingers = [thumbIsOpen, indexIsOpen, middleIsOpen, ringIsOpen, pinkyIsOpen]
-            .filter(Boolean).length;
+        // Get positions for directional detection
+        const thumbTip = landmarks[4];
+        const thumbMCP = landmarks[2];
         
-        // Check for specific gestures
+        const indexTip = landmarks[8];
+        const indexMCP = landmarks[5];
         
-        // Fist (no fingers extended)
-        if (extendedFingers === 0) {
-            return 'fist';
+        // Thumb up - for rotation (simplified detection)
+        if (thumbIsOpen && thumbTip.y < thumbMCP.y) {
+            return 'thumbUp';
         }
         
-        // Pointing left (only thumb extended to the left)
-        if (thumbIsOpen && !indexIsOpen && !middleIsOpen && !ringIsOpen && !pinkyIsOpen) {
-            // Check if thumb is pointing left
-            const thumbTip = landmarks[4];
-            const thumbBase = landmarks[2];
-            if (thumbTip.x < thumbBase.x) {
-                return 'left';
+        // Index finger pointing - don't care about other fingers
+        if (indexIsOpen) {
+            // Since webcam is mirrored, we need to reverse the left/right detection
+            // If index finger tip is to the left of MCP in the mirrored view, it's actually pointing right
+            if (indexTip.x < indexMCP.x) {
+                return 'indexRight'; // Reversed due to mirroring
             }
-        }
-        
-        // Pointing right (only thumb extended to the right)
-        if (thumbIsOpen && !indexIsOpen && !middleIsOpen && !ringIsOpen && !pinkyIsOpen) {
-            // Check if thumb is pointing right
-            const thumbTip = landmarks[4];
-            const thumbBase = landmarks[2];
-            if (thumbTip.x > thumbBase.x) {
-                return 'right';
+            // If index finger tip is to the right of MCP in the mirrored view, it's actually pointing left
+            else if (indexTip.x > indexMCP.x) {
+                return 'indexLeft'; // Reversed due to mirroring
             }
-        }
-        
-        // Index finger pointing up (only index extended)
-        if (!thumbIsOpen && indexIsOpen && !middleIsOpen && !ringIsOpen && !pinkyIsOpen) {
-            return 'up';
-        }
-        
-        // Index finger pointing down (only index extended and pointing down)
-        if (!thumbIsOpen && indexIsOpen && !middleIsOpen && !ringIsOpen && !pinkyIsOpen) {
-            const indexTip = landmarks[8];
-            const indexPIP = landmarks[6];
-            if (indexTip.y > indexPIP.y) {
-                return 'down';
-            }
-        }
-        
-        // Open palm (all fingers extended)
-        if (extendedFingers >= 4) {
-            return 'open';
         }
         
         return 'other';
+    }
+    
+    // Process detected gesture
+    function processGesture(gesture) {
+        // Don't process if game is over or paused
+        if (gameOver || isPaused) return;
+        
+        switch (gesture) {
+            case 'thumbUp':
+                rotatePiece();
+                break;
+            case 'indexLeft':
+                movePiece(-1, 0);
+                break;
+            case 'indexRight':
+                movePiece(1, 0);
+                break;
+        }
     }
     
     // Check if thumb is extended
@@ -643,34 +636,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const angle = Math.acos(dotProduct / (magnitude1 * magnitude2)) * (180 / Math.PI);
         
         return angle;
-    }
-    
-    // Process detected gesture
-    function processGesture(gesture) {
-        if (gameOver || isPaused) return;
-        
-        switch (gesture) {
-            case 'left':
-                movePiece(-1, 0);
-                break;
-            case 'right':
-                movePiece(1, 0);
-                break;
-            case 'down':
-                movePiece(0, 1);
-                score += 1;
-                updateScore();
-                break;
-            case 'up':
-                rotatePiece();
-                break;
-            case 'open':
-                hardDrop();
-                break;
-            case 'fist':
-                togglePause();
-                break;
-        }
     }
     
     // Start the game
