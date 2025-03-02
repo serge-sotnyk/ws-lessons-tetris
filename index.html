@@ -18,6 +18,7 @@
         .game-container {
             display: flex;
             gap: 20px;
+            align-items: flex-start;
         }
         
         #game-board {
@@ -29,6 +30,8 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
+            max-height: 600px;
+            overflow-y: auto;
         }
         
         .next-piece {
@@ -76,11 +79,81 @@
             text-align: center;
             display: none;
         }
+        
+        .webcam-container {
+            position: relative;
+            width: 240px;
+            margin-bottom: 20px;
+        }
+        
+        #webcam {
+            width: 100%;
+            height: 180px;
+            border: 2px solid #333;
+            background-color: #111;
+            transform: scaleX(-1); /* Mirror the webcam */
+        }
+        
+        #canvas-output {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 180px;
+            transform: scaleX(-1); /* Mirror the canvas */
+        }
+        
+        .gesture-status {
+            margin-top: 10px;
+            padding: 5px;
+            background-color: #333;
+            color: white;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .webcam-toggle {
+            margin-top: 10px;
+        }
+        
+        .instructions {
+            font-size: 0.9em;
+        }
+        
+        .instructions p {
+            margin: 5px 0;
+        }
     </style>
+    <!-- Add MediaPipe libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="game-container">
+        <!-- Webcam controls - moved to the left -->
+        <div class="webcam-container">
+            <h3>Hand Gesture Control</h3>
+            <video id="webcam" autoplay playsinline></video>
+            <canvas id="canvas-output"></canvas>
+            <div class="gesture-status" id="gesture-status">No gesture detected</div>
+            <div class="webcam-toggle">
+                <button id="webcam-toggle">Enable Webcam Control</button>
+            </div>
+            <div class="instructions">
+                <h4>Gesture Guide:</h4>
+                <p>👈 Thumb left: Move Left</p>
+                <p>👉 Thumb right: Move Right</p>
+                <p>👇 Index down: Move Down</p>
+                <p>👆 Index up: Rotate</p>
+                <p>✋ Open palm: Hard Drop</p>
+                <p>✊ Fist: Pause/Resume</p>
+            </div>
+        </div>
+        
         <canvas id="game-board" width="300" height="600"></canvas>
+        
         <div class="game-info">
             <div>
                 <h3>Next Piece</h3>
@@ -96,7 +169,7 @@
                 <button id="reset-button">Reset</button>
             </div>
             <div class="instructions">
-                <h3>Controls</h3>
+                <h3>Keyboard Controls</h3>
                 <p>Arrow Left: Move Left</p>
                 <p>Arrow Right: Move Right</p>
                 <p>Arrow Down: Move Down</p>

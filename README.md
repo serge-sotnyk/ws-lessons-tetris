@@ -16,6 +16,21 @@ A classic Tetris game implemented in HTML, CSS, and JavaScript.
    - **Space**: Hard drop (instantly drop piece to bottom)
    - **P**: Pause/Resume game
 
+## Hand Gesture Controls
+
+This Tetris implementation includes hand gesture controls using your webcam:
+
+1. Click the "Enable Webcam Control" button to activate the webcam.
+2. Use the following hand gestures to control the game:
+   - **Thumb pointing left**: Move piece left
+   - **Thumb pointing right**: Move piece right
+   - **Index finger pointing down**: Soft drop
+   - **Index finger pointing up**: Rotate piece
+   - **Open palm (all fingers extended)**: Hard drop
+   - **Fist (closed hand)**: Pause/Resume game
+
+Note: For the webcam controls to work, you need to allow camera access in your browser.
+
 ## Game Features
 
 - Score system with points for clearing lines and performing drops

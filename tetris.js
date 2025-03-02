@@ -25,6 +25,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let dropInterval = 1000; // milliseconds
     let lastTime = 0;
     
+    // Hand gesture control
+    let webcamEnabled = false;
+    let lastGestureTime = 0;
+    const GESTURE_COOLDOWN = 500; // milliseconds
+    let lastDetectedGesture = 'none';
+    
     // DOM elements
     const scoreElement = document.getElementById('score');
     const levelElement = document.getElementById('level');
@@ -34,6 +40,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const gameOverElement = document.getElementById('game-over');
     const finalScoreElement = document.getElementById('final-score');
     const restartButton = document.getElementById('restart-button');
+    const webcamToggle = document.getElementById('webcam-toggle');
+    const gestureStatus = document.getElementById('gesture-status');
+    const webcamElement = document.getElementById('webcam');
+    const canvasOutput = document.getElementById('canvas-output');
+    const canvasCtx = canvasOutput.getContext('2d');
     
     // Tetromino shapes and colors
     const SHAPES = [
@@ -425,6 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
     startButton.addEventListener('click', togglePause);
     resetButton.addEventListener('click', init);
     restartButton.addEventListener('click', init);
+    webcamToggle.addEventListener('click', toggleWebcam);
     
     // Toggle pause state
     function togglePause() {
@@ -433,6 +445,231 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             isPaused = !isPaused;
             startButton.textContent = isPaused ? 'Resume' : 'Pause';
+        }
+    }
+    
+    // Hand gesture control setup
+    function setupHandTracking() {
+        const hands = new Hands({
+            locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+            }
+        });
+        
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+        
+        hands.onResults(onHandResults);
+        
+        const camera = new Camera(webcamElement, {
+            onFrame: async () => {
+                await hands.send({image: webcamElement});
+            },
+            width: 640,
+            height: 480
+        });
+        
+        return camera;
+    }
+    
+    let camera = null;
+    
+    // Toggle webcam
+    function toggleWebcam() {
+        webcamEnabled = !webcamEnabled;
+        
+        if (webcamEnabled) {
+            webcamToggle.textContent = 'Disable Webcam Control';
+            if (!camera) {
+                camera = setupHandTracking();
+            }
+            camera.start();
+        } else {
+            webcamToggle.textContent = 'Enable Webcam Control';
+            if (camera) {
+                camera.stop();
+            }
+            gestureStatus.textContent = 'No gesture detected';
+        }
+    }
+    
+    // Process hand tracking results
+    function onHandResults(results) {
+        // Draw hand landmarks
+        canvasCtx.save();
+        canvasCtx.clearRect(0, 0, canvasOutput.width, canvasOutput.height);
+        
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            // Draw hand landmarks
+            for (const landmarks of results.multiHandLandmarks) {
+                drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
+                    color: '#00FF00',
+                    lineWidth: 3
+                });
+                drawLandmarks(canvasCtx, landmarks, {
+                    color: '#FF0000',
+                    lineWidth: 1,
+                    radius: 3
+                });
+            }
+            
+            // Process gestures
+            const gesture = detectGesture(results.multiHandLandmarks[0]);
+            
+            // Apply cooldown to prevent too frequent gesture triggers
+            const currentTime = Date.now();
+            if (currentTime - lastGestureTime > GESTURE_COOLDOWN) {
+                if (gesture !== 'none' && gesture !== lastDetectedGesture) {
+                    processGesture(gesture);
+                    lastGestureTime = currentTime;
+                    lastDetectedGesture = gesture;
+                }
+            }
+            
+            gestureStatus.textContent = `Detected: ${gesture}`;
+        } else {
+            gestureStatus.textContent = 'No hand detected';
+            lastDetectedGesture = 'none';
+        }
+        
+        canvasCtx.restore();
+    }
+    
+    // Detect hand gesture
+    function detectGesture(landmarks) {
+        // Finger states (extended or not)
+        const thumbIsOpen = isThumbOpen(landmarks);
+        const indexIsOpen = isFingerOpen(landmarks, 8, 6, 5);
+        const middleIsOpen = isFingerOpen(landmarks, 12, 10, 9);
+        const ringIsOpen = isFingerOpen(landmarks, 16, 14, 13);
+        const pinkyIsOpen = isFingerOpen(landmarks, 20, 18, 17);
+        
+        // Count extended fingers
+        const extendedFingers = [thumbIsOpen, indexIsOpen, middleIsOpen, ringIsOpen, pinkyIsOpen]
+            .filter(Boolean).length;
+        
+        // Check for specific gestures
+        
+        // Fist (no fingers extended)
+        if (extendedFingers === 0) {
+            return 'fist';
+        }
+        
+        // Pointing left (only thumb extended to the left)
+        if (thumbIsOpen && !indexIsOpen && !middleIsOpen && !ringIsOpen && !pinkyIsOpen) {
+            // Check if thumb is pointing left
+            const thumbTip = landmarks[4];
+            const thumbBase = landmarks[2];
+            if (thumbTip.x < thumbBase.x) {
+                return 'left';
+            }
+        }
+        
+        // Pointing right (only thumb extended to the right)
+        if (thumbIsOpen && !indexIsOpen && !middleIsOpen && !ringIsOpen && !pinkyIsOpen) {
+            // Check if thumb is pointing right
+            const thumbTip = landmarks[4];
+            const thumbBase = landmarks[2];
+            if (thumbTip.x > thumbBase.x) {
+                return 'right';
+            }
+        }
+        
+        // Index finger pointing up (only index extended)
+        if (!thumbIsOpen && indexIsOpen && !middleIsOpen && !ringIsOpen && !pinkyIsOpen) {
+            return 'up';
+        }
+        
+        // Index finger pointing down (only index extended and pointing down)
+        if (!thumbIsOpen && indexIsOpen && !middleIsOpen && !ringIsOpen && !pinkyIsOpen) {
+            const indexTip = landmarks[8];
+            const indexPIP = landmarks[6];
+            if (indexTip.y > indexPIP.y) {
+                return 'down';
+            }
+        }
+        
+        // Open palm (all fingers extended)
+        if (extendedFingers >= 4) {
+            return 'open';
+        }
+        
+        return 'other';
+    }
+    
+    // Check if thumb is extended
+    function isThumbOpen(landmarks) {
+        const thumbTip = landmarks[4];
+        const thumbIP = landmarks[3];
+        const thumbMCP = landmarks[2];
+        
+        // Calculate the angle between the thumb segments
+        const angle = calculateAngle(thumbMCP, thumbIP, thumbTip);
+        
+        // Thumb is extended if the angle is greater than a threshold
+        return angle > 150;
+    }
+    
+    // Check if a finger is extended
+    function isFingerOpen(landmarks, tipIdx, pipIdx, mcpIdx) {
+        const tip = landmarks[tipIdx];
+        const pip = landmarks[pipIdx];
+        const mcp = landmarks[mcpIdx];
+        
+        // A finger is extended if its tip is higher (lower y) than its PIP joint
+        return tip.y < pip.y;
+    }
+    
+    // Calculate angle between three points
+    function calculateAngle(p1, p2, p3) {
+        const vector1 = {
+            x: p1.x - p2.x,
+            y: p1.y - p2.y
+        };
+        
+        const vector2 = {
+            x: p3.x - p2.x,
+            y: p3.y - p2.y
+        };
+        
+        const dotProduct = vector1.x * vector2.x + vector1.y * vector2.y;
+        const magnitude1 = Math.sqrt(vector1.x * vector1.x + vector1.y * vector1.y);
+        const magnitude2 = Math.sqrt(vector2.x * vector2.x + vector2.y * vector2.y);
+        
+        const angle = Math.acos(dotProduct / (magnitude1 * magnitude2)) * (180 / Math.PI);
+        
+        return angle;
+    }
+    
+    // Process detected gesture
+    function processGesture(gesture) {
+        if (gameOver || isPaused) return;
+        
+        switch (gesture) {
+            case 'left':
+                movePiece(-1, 0);
+                break;
+            case 'right':
+                movePiece(1, 0);
+                break;
+            case 'down':
+                movePiece(0, 1);
+                score += 1;
+                updateScore();
+                break;
+            case 'up':
+                rotatePiece();
+                break;
+            case 'open':
+                hardDrop();
+                break;
+            case 'fist':
+                togglePause();
+                break;
         }
     }
     
